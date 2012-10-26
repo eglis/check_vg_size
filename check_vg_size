@@ -1,4 +1,6 @@
 #!/bin/bash
+#check_vg_size
+#set -x 
 # Plugin for Nagios
 # Written by M. Koettenstorfer (mko@lihas.de)
 # Some additions by J. Schoepfer (jsc@lihas.de)
@@ -16,11 +18,14 @@ STATE_WARNING=1
 STATE_CRITICAL=2
 STATE_UNKNOWN=3
 STATE_DEPENDENT=4
-LANG=C
 
 # realsize=`ls -alh $1  | awk '{ print $5}'`
 # realsize_with_file=`ls -alh $file | awk '{ print $5,$9}'`
 PROGNAME=$(basename $0)
+
+########################################################################
+### DEFINE FUNCTIONS
+########################################################################
 
 print_usage() {
 	echo "Usage: $PROGNAME  -w <min size warning level in gb> -c <min size critical level in gb> -v volumegroupname"
@@ -30,13 +35,46 @@ print_usage() {
 print_help() {
 	print_usage
 	echo ""
-	echo "This plugin will check howmany space in volume groups is free"
-	echo ""
-	exit 0
+	echo "This plugin will check how many space in volume groups is free"
+	echo "usage: "
+	exit $STATE_UNKNOWN
 }
 
-exitstatus=$STATE_UNKNOWN #default
+	exitstatus=$STATE_UNKNOWN #default
+	
 
+#Does volume group actually exist?
+volumeGroupExists () {
+	VGValid=$(vgdisplay 2>/dev/null | grep "$volumegroup" | wc -l )
+	
+	if [[  -z "$volumegroup" ||  $VGValid = 0 ]]
+	then
+		echo "Volumegroup $volumegroup wasn't valid or wasn't specified"
+		echo "with \"-v Volumegroup\", bye."
+		return 0
+	else
+		#The volume group exists
+		return 1 
+	fi
+}
+
+getSizes () {
+	#Check the actual sizes
+	freespace=$(/sbin/vgdisplay "$volumegroup" 2>/dev/null  | head -n19 | grep Free | cut -d'/' -f3 | cut -d' ' -f2 )
+	postfix=$(/sbin/vgdisplay "$volumegroup" 2>/dev/null  | grep Free | cut -d'/' -f3 | cut -d' ' -f3 )
+	if [[ $postfix == TB ]]
+	then 
+		freespace=$(echo "$freespace * 1000" | bc | cut -d'.' -f1 )
+	
+	else
+		freespace=$(echo $freespace| cut -d'.' -f1)
+	fi
+}
+
+########################################################################
+### RUN PROGRAM
+########################################################################
+#Read input values
 while getopts ":w:c:v:h:" opt ;do
 	case $opt in
 		h)
@@ -58,28 +96,19 @@ while getopts ":w:c:v:h:" opt ;do
 	esac
 done
 
-#Does volume group actually exist?
-VGValid=$(vgdisplay 2>/dev/null | grep "$volumegroup" | wc -l )
+volumeGroupExists
+status=$?
 
-if [[  -z "$volumegroup" ||  $VGValid = 0 ]]
-then
-	echo "Volumegroup $volumegroup wasn't valid or wasn't specified"
-	echo "with \"-v Volumegroup\", bye."
-	exit $STATE_UNKNOWN
+if (( $status )); then
+	getSizes
 fi
 
 
-#Check the actual sizes
-freespace=$(/sbin/vgdisplay "$volumegroup" | head -n19 | grep Free | cut -d'/' -f3 | cut -d' ' -f2 )
-postfix=$(/sbin/vgdisplay "$volumegroup" | grep Free | cut -d'/' -f3 | cut -d' ' -f3 )
-if [ $postfix == TB ]
-then 
-#	a=$( echo $freespace | tr ',' '.' )	
-	freespace=$(echo "$freespace * 1000" | bc | cut -d'.' -f1 )
 
-else
-	freespace=$(echo $freespace| cut -d'.' -f1)
-fi
+
+########################################################################
+### OLD CODE
+########################################################################
 
 # Check arguments for validity
 if [[ -c $critlevel || -w $warnlevel ]] # Did we get warn and crit values?
