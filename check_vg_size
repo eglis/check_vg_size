@@ -1,6 +1,6 @@
 #!/bin/bash
 #check_vg_size
-#set -x 
+set -x 
 # Plugin for Nagios
 # Written by M. Koettenstorfer (mko@lihas.de)
 # Some additions by J. Schoepfer (jsc@lihas.de)
@@ -40,8 +40,24 @@ print_help() {
 	exit $STATE_UNKNOWN
 }
 
-	exitstatus=$STATE_UNKNOWN #default
+exitstatus=$STATE_UNKNOWN #default
 	
+checkArgValidity () {
+# Check arguments for validity
+	if [[ -z $critlevel || -z $warnlevel ]] # Did we get warn and crit values?
+	then    
+	        echo "You must specify a warning and critical level"
+		print_usage
+	        exitstatus=$STATE_UNKNOWN
+	        exit $exitstatus 
+	elif [ $warnlevel -le $critlevel ] # Do the warn/crit values make sense?
+	then
+		echo "CRITICAL value of $critlevel GB is less than WARNING level of $warnlevel GB"
+		print_usage
+		exitstatus=$STATE_UNKNOWN
+		exit $exitstatus
+	fi
+}
 
 #Does volume group actually exist?
 volumeGroupExists () {
@@ -71,8 +87,26 @@ getSizes () {
 	fi
 }
 
+setExitStatus () {
+	if [ "$freespace" -le "$critlevel" ]
+	then
+		MESSAGE="VG $volumegroup CRITICAL Available space is $freespace GB"
+		exitstatus=$STATE_CRITICAL
+	elif [ "$freespace" -le "$warnlevel" ]
+	then
+		MESSAGE="VG $volumegroup WARNING Available space is $freespace GB"
+		exitstatus=$STATE_WARNING
+	else
+		MESSAGE="VG $volumegroup OK Available space is $freespace GB"
+		exitstatus=$STATE_OK
+	fi 
+}
+
 ########################################################################
 ### RUN PROGRAM
+########################################################################
+
+
 ########################################################################
 #Read input values
 while getopts ":w:c:v:h:" opt ;do
@@ -96,6 +130,8 @@ while getopts ":w:c:v:h:" opt ;do
 	esac
 done
 
+checkArgValidity
+
 volumeGroupExists
 status=$?
 
@@ -103,6 +139,7 @@ if (( $status )); then
 	getSizes
 fi
 
+setExitStatus
 
 
 
@@ -110,36 +147,6 @@ fi
 ### OLD CODE
 ########################################################################
 
-# Check arguments for validity
-if [[ -c $critlevel || -w $warnlevel ]] # Did we get warn and crit values?
-then    
-        echo "You must specify a warning and critical level"
-	print_usage
-        exitstatus=$STATE_UNKNOWN
-        exit $exitstatus 
-elif [ $warnlevel -le $critlevel ] # Do the warn/crit values make sense?
-then
-	echo "CRITICAL value of $critlevel GB is less than WARNING level of $warnlevel GB"
-	print_usage
-	exitstatus=$STATE_UNKNOWN
-	exit $exitstatus
-fi
-
-
-# auswerten der abfrage
-
-if [ "$freespace" -le "$critlevel" ]
-then
-	MESSAGE="VG $volumegroup CRITICAL verfuegbarer Platz ist $freespace GB gross"
-	exitstatus=$STATE_CRITICAL
-elif [ "$freespace" -le "$warnlevel" ]
-then
-	MESSAGE="VG $volumegroup WARNING verfuegbarer Platz ist $freespace GB gross"
-	exitstatus=$STATE_WARNING
-else
-	MESSAGE="VG $volumegroup OK verfuegbarer Platz ist $freespace GB gross"
-	exitstatus=$STATE_OK
-fi 
 
 echo $MESSAGE
 exit $exitstatus
