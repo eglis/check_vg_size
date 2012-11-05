@@ -1,6 +1,6 @@
 #!/bin/bash
 #check_vg_size
-#set -x 
+set -x 
 # Plugin for Nagios
 # Written by M. Koettenstorfer (mko@lihas.de)
 # Some additions by J. Schoepfer (jsc@lihas.de)
@@ -27,6 +27,11 @@ LONGSERVICEOUTPUT=""
 # realsize_with_file=`ls -alh $file | awk '{ print $5,$9}'`
 PROGNAME=$(basename $0)
 
+exitstatus=$STATE_UNKNOWN #default
+declare -a volumeGroups;
+novg=0; #number of volume groups
+allVG=false; #Will we use all volume groups we can find on system?
+
 ########################################################################
 ### DEFINE FUNCTIONS
 ########################################################################
@@ -45,7 +50,6 @@ print_help() {
 	exit $STATE_UNKNOWN
 }
 
-exitstatus=$STATE_UNKNOWN #default
 	
 checkArgValidity () {
 # Check arguments for validity
@@ -66,17 +70,31 @@ checkArgValidity () {
 
 #Does volume group actually exist?
 volumeGroupExists () {
-	VGValid=$(vgdisplay 2>/dev/null | grep "$volumegroup" | wc -l )
+	local volGroup=$1
+	VGValid=$(vgdisplay 2>/dev/null | grep "$volGroup" | wc -l )
 	
-	if [[  -z "$volumegroup" ||  $VGValid = 0 ]]
+	if [[  -z "$volGroup" ||  $VGValid = 0 ]]
 	then
-		echo "Volumegroup $volumegroup wasn't valid or wasn't specified"
+		echo "Volumegroup $volGroup wasn't valid or wasn't specified"
 		echo "with \"-v Volumegroup\", bye."
 		return 0
 	else
 		#The volume group exists
 		return 1 
 	fi
+}
+
+getNumberOfVGOnSystem () {
+	local novg=$(vgs 2>/dev/null | wc -l)
+	let novg--
+	echo $novg
+}
+
+getAllVGOnSystem () {
+	novg=$(getNumberOfVGOnSystem)
+	for (( i=0; i < novg; i++)); do
+		volumeGroups[$i]=$(vgs | tail -n $novg | awk '{print $1}')
+	done
 }
 
 getColumnNoByName () {
@@ -106,38 +124,46 @@ getSizesOfVolume () {
 	fi
 }
 
-getSizes () {
-	#Check the actual sizes
-	freespace=$(/sbin/vgdisplay "$volumegroup" 2>/dev/null  | head -n19 | grep Free | cut -d'/' -f3 | cut -d' ' -f2 )
-	postfix=$(/sbin/vgdisplay "$volumegroup" 2>/dev/null  | grep Free | cut -d'/' -f3 | cut -d' ' -f3 )
-	if [[ $postfix == TB ]]
-	then 
-		freespace=$(echo "$freespace * 1000" | bc | cut -d'.' -f1 )
-	
-	else
-		freespace=$(echo $freespace| cut -d'.' -f1)
-	fi
-}
-
 setExitStatus () {
-	local currentstatus=$1
+	local volGroup=$1
+	local formerStatus=$1
 	if [ "$freespace" -le "$critlevel" ]
 	then
-		SERVICEOUTPUT=$LONGSERVICEOUTPUT"VG $volumegroup CRITICAL Available space is $freespace GB"
+		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup CRITICAL Available space is $freespace GB"
 		exitstatus=$STATE_CRITICAL
 	elif [ "$freespace" -le "$warnlevel" ]
 	then
-		SERVICEOUTPUT="VG $volumegroup WARNING Available space is $freespace GB"
+		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup WARNING Available space is $freespace GB"
 		exitstatus=$STATE_WARNING
 	else
-		SERVICEPERFDATA="VG $volumegroup OK Available space is $freespace GB"
+		SERVICEPERFDATA=$SERVICEOUTPUT"VG $volGroup OK Available space is $freespace GB"
 		exitstatus=$STATE_OK
 	fi 
 
-	if [ $currentstatus -gt $exitstatus ]
+	if [ $formerStatus -gt $exitstatus ]
 	then
-		exitstatus=$currentstatus
+		exitstatus=$formerStatus
 	fi
+}
+
+
+checkVolumeGroups () {
+checkArgValidity
+	for (( i=0; i < novg; i++ )); do
+		local status=$STATE_UNKNOWN
+		local currentVG=${volumeGroups[$i]}
+	
+		volumeGroupExists $currentVG  
+		status=$?
+		
+		if (( $status )); then
+			getSizesOfVolume "$currentVG" 
+		else
+			status=$STATE_UNKNOWN
+		fi
+		
+		setExitStatus $status
+	done
 }
 
 ########################################################################
@@ -150,20 +176,24 @@ setExitStatus () {
 while getopts ":w:c:v:h:a" opt ;do
 	case $opt in
 		h)
-			print_help
-			exit $exitstatus
+			print_help;
+			exit $exitstatus;
 			;;
 		w)
-			warnlevel=$OPTARG
+			warnlevel=$OPTARG;
 			;;
 		c)
-			critlevel=$OPTARG
+			critlevel=$OPTARG;
 			;;
 		v)
-			volumegroup=$OPTARG
+			if ( ! $allVG ); then
+				volumeGroups[$novg]=$OPTARG;
+				let novg++;
+			fi
 			;;
 		a)
-			volumegroup=$OPTARG
+			allVG=true;
+			getAllVGOnSystem;
 			;;
 		\?)
 			echo "Invalid option: -$OPTARG" >&2
@@ -171,22 +201,9 @@ while getopts ":w:c:v:h:a" opt ;do
 	esac
 done
 
-checkArgValidity
-
-volumeGroupExists
-status=$?
-
-if (( $status )); then
-	getSizesOfVolume "$volumegroup" 
-else
-	exitstatus=$STATE_UNKNOWN
-	exit $exitstatus
-fi
-
-setExitStatus exitStatus
+checkVolumeGroups
 
 
-echo $MESSAGE
+echo $SERVICEOUTPUT"|"$SERVICEPERFDATA"|"$LONGSERVICEOUTPUT
 exit $exitstatus
-
 
