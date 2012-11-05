@@ -74,6 +74,33 @@ volumeGroupExists () {
 	fi
 }
 
+getColumnNoByName () {
+        columnName=$1
+        result=$(vgs 2>/dev/null | head -n1 | awk -v name=$columnName '
+                BEGIN{}
+                        { for(i=1;i<=NF;i++){
+                              if ($i ~ name)
+                                  {print i } }
+                        }')
+
+        echo $result
+}
+
+getSizesOfVolume () {
+	volumeName="$1"
+	#Check the actual sizes
+	cn=$(getColumnNoByName "VFree")
+	freespace=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cn '{print $n}' | sed -e 's/.$//')
+	postfix=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cn '{print $n}'| sed -e 's/^.*\(.\)$/\1/')
+	if [[ $postfix == T ]]
+	then 
+		freespace=$(echo "$freespace * 1000" | bc | cut -d'.' -f1 )
+	
+	else
+		freespace=$(echo $freespace| cut -d'.' -f1)
+	fi
+}
+
 getSizes () {
 	#Check the actual sizes
 	freespace=$(/sbin/vgdisplay "$volumegroup" 2>/dev/null  | head -n19 | grep Free | cut -d'/' -f3 | cut -d' ' -f2 )
@@ -136,17 +163,13 @@ volumeGroupExists
 status=$?
 
 if (( $status )); then
-	getSizes
+	getSizesOfVolume "$volumegroup" 
 fi
 
 setExitStatus
 
 
-
-########################################################################
-### OLD CODE
-########################################################################
-
-
 echo $MESSAGE
 exit $exitstatus
+
+
