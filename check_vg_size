@@ -19,6 +19,10 @@ STATE_CRITICAL=2
 STATE_UNKNOWN=3
 STATE_DEPENDENT=4
 
+SERVICEOUTPUT=""
+SERVICEPERFDATA=""
+LONGSERVICEOUTPUT=""
+
 # realsize=`ls -alh $1  | awk '{ print $5}'`
 # realsize_with_file=`ls -alh $file | awk '{ print $5,$9}'`
 PROGNAME=$(basename $0)
@@ -28,7 +32,8 @@ PROGNAME=$(basename $0)
 ########################################################################
 
 print_usage() {
-	echo "Usage: $PROGNAME  -w <min size warning level in gb> -c <min size critical level in gb> -v volumegroupname"
+	echo "Usage: $PROGNAME  -w <min size warning level in gb> -c <min size critical level in gb> -v <volumegroupname> [-a]"
+	echo "In case of usage of -a all volumegroups defined by -v will be ommited and all groups which are found on system are checked"
 	echo ""
 }
 
@@ -115,18 +120,24 @@ getSizes () {
 }
 
 setExitStatus () {
+	local currentstatus=$1
 	if [ "$freespace" -le "$critlevel" ]
 	then
-		MESSAGE="VG $volumegroup CRITICAL Available space is $freespace GB"
+		SERVICEOUTPUT=$LONGSERVICEOUTPUT"VG $volumegroup CRITICAL Available space is $freespace GB"
 		exitstatus=$STATE_CRITICAL
 	elif [ "$freespace" -le "$warnlevel" ]
 	then
-		MESSAGE="VG $volumegroup WARNING Available space is $freespace GB"
+		SERVICEOUTPUT="VG $volumegroup WARNING Available space is $freespace GB"
 		exitstatus=$STATE_WARNING
 	else
-		MESSAGE="VG $volumegroup OK Available space is $freespace GB"
+		SERVICEPERFDATA="VG $volumegroup OK Available space is $freespace GB"
 		exitstatus=$STATE_OK
 	fi 
+
+	if [ $currentstatus -gt $exitstatus ]
+	then
+		exitstatus=$currentstatus
+	fi
 }
 
 ########################################################################
@@ -136,7 +147,7 @@ setExitStatus () {
 
 ########################################################################
 #Read input values
-while getopts ":w:c:v:h:" opt ;do
+while getopts ":w:c:v:h:a" opt ;do
 	case $opt in
 		h)
 			print_help
@@ -149,6 +160,9 @@ while getopts ":w:c:v:h:" opt ;do
 			critlevel=$OPTARG
 			;;
 		v)
+			volumegroup=$OPTARG
+			;;
+		a)
 			volumegroup=$OPTARG
 			;;
 		\?)
@@ -169,7 +183,7 @@ else
 	exit $exitstatus
 fi
 
-setExitStatus
+setExitStatus exitStatus
 
 
 echo $MESSAGE
