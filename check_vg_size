@@ -126,42 +126,57 @@ convertToGB () {
 	echo $value
 }
 
+convertToPercent () {
+#$1 = xx%
+#$2 = 100%
+	local input=$1;
+	local max=$2;
+
+	local onePercent=$( echo "scale=2; $max / 100" | bc );
+	local freePercent=$( echo "$input / $onePercent" | bc );
+	echo $freePercent;
+	return 0;
+}
+
 getSizesOfVolume () {
-	volumeName="$1"
+	volumeName="$1";
 	#Check the actual sizes
-	cnFree=$(getColumnNoByName "VFree")
-	cnSize=$(getColumnNoByName "VSize")
-	freespace=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}' | sed -e 's/.$//')
-	fullspace=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}' | sed -e 's/.$//')
-	local postfixFree=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/')
-	local postfixFull=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/')
-	freespace=$(convertToGB $freespace $postfixFree)
-	fullspace=$(convertToGB $fullspace $postfixFull)
+	cnFree=$(getColumnNoByName "VFree");
+	cnSize=$(getColumnNoByName "VSize");
+	freespace=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}' | sed -e 's/.$//');
+	fullspace=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}' | sed -e 's/.$//');
+	local postfixFree=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/');
+	local postfixFull=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/');
+	freespace=$(convertToGB $freespace $postfixFree);
+	fullspace=$(convertToGB $fullspace $postfixFull);
 
 	if ( $inPercent ); then
 	#Convert to Percents
-		onePercent=$( echo "scale=2; $fullspace / 100" | bc )
-		freePercent=$( echo "scale=0; $freespace / $onePercent" | bc )
-		fullspace=100;
-		freespace=$freePercent
+		freespace=$(convertToPercent $freespace $fullspace);
+		warnlevel=$(convertToPercent $freespace $fullspace);
+		critlevel=$(convertToPercent $freespace $fullspace);
+		
 	fi 
 }
 
 setExitStatus () {
-	local volGroup=$1
+	local status=$1
+	local volGroup=$2
 	local formerStatus=$exitstatus
+	if [ $status -gt $formerStatus]
 	if [ "$freespace" -le "$critlevel" ]
 	then
-		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup CRITICAL Available space is $freespace $units"
+		SERVICEOUTPUT=$SERVICEOUTPUT" VG $volGroup CRITICAL Available space is $freespace $units;"
 		exitstatus=$STATE_CRITICAL
 	elif [ "$freespace" -le "$warnlevel" ]
 	then
-		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup WARNING Available space is $freespace $units"
+		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup WARNING Available space is $freespace $units;"
 		exitstatus=$STATE_WARNING
 	else
-		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup OK Available space is $freespace $units"
+		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup OK Available space is $freespace $units;"
 		exitstatus=$STATE_OK
 	fi 
+	SERVICEPERFDATA=" $volGroup=$freespace$units;$warnlevel;$critlevel;0;$fullspace"
 
 	if [ $formerStatus -gt $exitstatus ]
 	then
@@ -173,7 +188,7 @@ setExitStatus () {
 checkVolumeGroups () {
 checkArgValidity
 	for (( i=0; i < novg; i++ )); do
-		local status=$STATE_UNKNOWN
+		local status=$STATE_OK
 		local currentVG=${volumeGroups[$i]}
 	
 		volumeGroupExists $currentVG  
@@ -185,7 +200,7 @@ checkArgValidity
 			status=$STATE_UNKNOWN
 		fi
 		
-		setExitStatus $status
+		setExitStatus $status $currentVG
 	done
 }
 
@@ -231,6 +246,6 @@ done
 checkVolumeGroups
 
 
-echo $SERVICEOUTPUT"|"$SERVICEPERFDATA"|"$LONGSERVICEOUTPUT
+echo $SERVICEOUTPUT"|"$SERVICEPERFDATA
 exit $exitstatus
 
