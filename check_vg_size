@@ -4,13 +4,12 @@
 # Plugin for Nagios
 # Written by M. Koettenstorfer (mko@lihas.de)
 # Some additions by J. Schoepfer (jsc@lihas.de)
-# Last Modified: 2008-11-06
+# Major changes into functions and input/output values J. Veverka (veverka.kuba@gmail.com)
+# Last Modified: 2012-11-06
 #
 # Description:
 #
 # This plugin will check howmany space in volume groups is free
-
-# Don't change anything below here
 
 # Nagios return codes
 STATE_OK=0
