@@ -1,6 +1,6 @@
 #!/bin/bash
 #check_vg_size
-set -x 
+#set -x 
 # Plugin for Nagios
 # Written by M. Koettenstorfer (mko@lihas.de)
 # Some additions by J. Schoepfer (jsc@lihas.de)
@@ -21,16 +21,18 @@ STATE_DEPENDENT=4
 
 SERVICEOUTPUT=""
 SERVICEPERFDATA=""
-LONGSERVICEOUTPUT=""
 
-# realsize=`ls -alh $1  | awk '{ print $5}'`
-# realsize_with_file=`ls -alh $file | awk '{ print $5,$9}'`
 PROGNAME=$(basename $0)
 
-exitstatus=$STATE_UNKNOWN #default
+exitstatus=$STATE_OK #default
 declare -a volumeGroups;
 novg=0; #number of volume groups
 allVG=false; #Will we use all volume groups we can find on system?
+inPercent=false; #Use percentage for comparison?
+
+unitsGB="GB"
+unitsPercent="%"
+units=$unitsGB
 
 ########################################################################
 ### DEFINE FUNCTIONS
@@ -109,34 +111,55 @@ getColumnNoByName () {
         echo $result
 }
 
+convertToGB () {
+#$1 = value 
+#$2 = posfix
+	local value=$1
+	local postfixFree=$2
+
+	if [[ $postfixFree == T ]]
+	then 
+		value=$(echo "$value * 1000" | bc | cut -d'.' -f1 )
+	else
+		value=$(echo $value | cut -d'.' -f1)
+	fi
+	echo $value
+}
+
 getSizesOfVolume () {
 	volumeName="$1"
 	#Check the actual sizes
-	cn=$(getColumnNoByName "VFree")
-	freespace=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cn '{print $n}' | sed -e 's/.$//')
-	postfix=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cn '{print $n}'| sed -e 's/^.*\(.\)$/\1/')
-	if [[ $postfix == T ]]
-	then 
-		freespace=$(echo "$freespace * 1000" | bc | cut -d'.' -f1 )
-	
-	else
-		freespace=$(echo $freespace| cut -d'.' -f1)
-	fi
+	cnFree=$(getColumnNoByName "VFree")
+	cnSize=$(getColumnNoByName "VSize")
+	freespace=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}' | sed -e 's/.$//')
+	fullspace=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}' | sed -e 's/.$//')
+	local postfixFree=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/')
+	local postfixFull=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/')
+	freespace=$(convertToGB $freespace $postfixFree)
+	fullspace=$(convertToGB $fullspace $postfixFull)
+
+	if ( $inPercent ); then
+	#Convert to Percents
+		onePercent=$( echo "scale=2; $fullspace / 100" | bc )
+		freePercent=$( echo "scale=0; $freespace / $onePercent" | bc )
+		fullspace=100;
+		freespace=$freePercent
+	fi 
 }
 
 setExitStatus () {
 	local volGroup=$1
-	local formerStatus=$1
+	local formerStatus=$exitstatus
 	if [ "$freespace" -le "$critlevel" ]
 	then
-		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup CRITICAL Available space is $freespace GB"
+		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup CRITICAL Available space is $freespace $units"
 		exitstatus=$STATE_CRITICAL
 	elif [ "$freespace" -le "$warnlevel" ]
 	then
-		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup WARNING Available space is $freespace GB"
+		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup WARNING Available space is $freespace $units"
 		exitstatus=$STATE_WARNING
 	else
-		SERVICEPERFDATA=$SERVICEOUTPUT"VG $volGroup OK Available space is $freespace GB"
+		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup OK Available space is $freespace $units"
 		exitstatus=$STATE_OK
 	fi 
 
@@ -173,7 +196,7 @@ checkArgValidity
 
 ########################################################################
 #Read input values
-while getopts ":w:c:v:h:a" opt ;do
+while getopts ":w:c:v:h:ap" opt ;do
 	case $opt in
 		h)
 			print_help;
@@ -194,6 +217,10 @@ while getopts ":w:c:v:h:a" opt ;do
 		a)
 			allVG=true;
 			getAllVGOnSystem;
+			;;
+		p)
+			inPercent=true;
+			units=$unitsPercent
 			;;
 		\?)
 			echo "Invalid option: -$OPTARG" >&2
