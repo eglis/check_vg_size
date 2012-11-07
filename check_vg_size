@@ -23,6 +23,8 @@ SERVICEPERFDATA=""
 
 PROGNAME=$(basename $0)
 
+_vgs='/usr/sbin/vgs'
+
 exitstatus=$STATE_OK #default
 declare -a volumeGroups;
 novg=0; #number of volume groups
@@ -72,7 +74,7 @@ checkArgValidity () {
 #Does volume group actually exist?
 volumeGroupExists () {
 	local volGroup=$1
-	VGValid=$(vgdisplay 2>/dev/null | grep "$volGroup" | wc -l )
+	VGValid=$(/usr/sbin/vgs 2>/dev/null | grep "$volGroup" | wc -l )
 	
 	if [[  -z "$volGroup" ||  $VGValid = 0 ]]
 	then
@@ -86,7 +88,7 @@ volumeGroupExists () {
 }
 
 getNumberOfVGOnSystem () {
-	local novg=$(vgs 2>/dev/null | wc -l)
+	local novg=$($_vgs 2>/dev/null | wc -l)
 	let novg--
 	echo $novg
 }
@@ -95,7 +97,7 @@ getAllVGOnSystem () {
 	novg=$(getNumberOfVGOnSystem)
 	local found=false;
 	for (( i=0; i < novg; i++)); do
-		volumeGroups[$i]=$(vgs | tail -n $novg | awk '{print $1}')
+		volumeGroups[$i]=$($_vgs | tail -n $novg | awk '{print $1}')
 		found=true;
 	done
 	if ( ! $found ); then
@@ -107,7 +109,7 @@ getAllVGOnSystem () {
 
 getColumnNoByName () {
         columnName=$1
-        result=$(vgs 2>/dev/null | head -n1 | awk -v name=$columnName '
+        result=$($_vgs 2>/dev/null | head -n1 | awk -v name=$columnName '
                 BEGIN{}
                         { for(i=1;i<=NF;i++){
                               if ($i ~ name)
@@ -149,10 +151,10 @@ getSizesOfVolume () {
 	#Check the actual sizes
 	cnFree=$(getColumnNoByName "VFree");
 	cnSize=$(getColumnNoByName "VSize");
-	freespace=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}' | sed -e 's/.$//');
-	fullspace=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}' | sed -e 's/.$//');
-	local postfixFree=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/');
-	local postfixFull=$(vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/');
+	freespace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}' | sed -e 's/.$//');
+	fullspace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}' | sed -e 's/.$//');
+	local postfixFree=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/');
+	local postfixFull=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/');
 	freespace=$(convertToGB $freespace $postfixFree);
 	fullspace=$(convertToGB $fullspace $postfixFull);
 
