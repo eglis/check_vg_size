@@ -93,9 +93,15 @@ getNumberOfVGOnSystem () {
 
 getAllVGOnSystem () {
 	novg=$(getNumberOfVGOnSystem)
+	local found=false;
 	for (( i=0; i < novg; i++)); do
 		volumeGroups[$i]=$(vgs | tail -n $novg | awk '{print $1}')
+		found=true;
 	done
+	if ( ! $found ); then
+		echo "No Volumegroup wasn't valid or wasn't found"
+		exit $STATE_UNKNOWN 
+	fi
 }
 
 getColumnNoByName () {
