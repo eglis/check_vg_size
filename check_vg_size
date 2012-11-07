@@ -99,6 +99,7 @@ getAllVGOnSystem () {
 		found=true;
 	done
 	if ( ! $found ); then
+		echo "$found"
 		echo "No Volumegroup wasn't valid or wasn't found"
 		exit $STATE_UNKNOWN 
 	fi
@@ -168,7 +169,12 @@ setExitStatus () {
 	local status=$1
 	local volGroup=$2
 	local formerStatus=$exitstatus
-	if [ $status -gt $formerStatus]
+
+	if [ $status -gt $formerStatus ]
+	then
+		formerStatus=$status
+	fi
+
 	if [ "$freespace" -le "$critlevel" ]
 	then
 		SERVICEOUTPUT=$SERVICEOUTPUT" VG $volGroup CRITICAL Available space is $freespace $units;"
@@ -181,7 +187,8 @@ setExitStatus () {
 		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup OK Available space is $freespace $units;"
 		exitstatus=$STATE_OK
 	fi 
-	SERVICEPERFDATA=" $volGroup=$freespace$units;$warnlevel;$critlevel;0;$fullspace"
+
+	SERVICEPERFDATA="$SERVICEPERFDATA $volGroup=$freespace$units;$warnlevel;$critlevel;0;$fullspace"
 
 	if [ $formerStatus -gt $exitstatus ]
 	then
