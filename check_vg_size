@@ -80,10 +80,12 @@ volumeGroupExists () {
 	then
 		echo "Volumegroup $volGroup wasn't valid or wasn't specified"
 		echo "with \"-v Volumegroup\", bye."
-		return 0
+		echo false
+		return 1
 	else
 		#The volume group exists
-		return 1 
+		echo true
+		return 0 
 	fi
 }
 
@@ -163,7 +165,6 @@ getSizesOfVolume () {
 		freespace=$(convertToPercent $freespace $fullspace);
 		warnlevel=$(convertToPercent $freespace $fullspace);
 		critlevel=$(convertToPercent $freespace $fullspace);
-		
 	fi 
 }
 
@@ -205,11 +206,11 @@ checkArgValidity
 		local status=$STATE_OK
 		local currentVG=${volumeGroups[$i]}
 	
-		volumeGroupExists $currentVG  
-		status=$?
+		local groupExists=$(volumeGroupExists $currentVG  )
 		
-		if (( $status )); then
+		if ( $groupExists ); then
 			getSizesOfVolume "$currentVG" 
+			status=$STATE_OK
 		else
 			status=$STATE_UNKNOWN
 		fi
