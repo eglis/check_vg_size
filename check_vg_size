@@ -163,8 +163,6 @@ getSizesOfVolume () {
 	if ( $inPercent ); then
 	#Convert to Percents
 		freespace=$(convertToPercent $freespace $fullspace);
-		warnlevel=$(convertToPercent $freespace $fullspace);
-		critlevel=$(convertToPercent $freespace $fullspace);
 	fi 
 }
 
