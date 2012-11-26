@@ -156,7 +156,7 @@ getSizesOfVolume () {
 	freespace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}' | sed -e 's/.$//');
 	fullspace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}' | sed -e 's/.$//');
 	local postfixFree=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/');
-	local postfixFull=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/');
+	local postfixFull=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}'| sed -e 's/^.*\(.\)$/\1/');
 	freespace=$(convertToGB $freespace $postfixFree);
 	fullspace=$(convertToGB $fullspace $postfixFull);
 
