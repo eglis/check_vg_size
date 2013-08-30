@@ -23,7 +23,7 @@ SERVICEPERFDATA=""
 
 PROGNAME=$(basename $0)
 
-_vgs='/usr/sbin/vgs'
+_vgs='/sbin/vgs --units=G'
 
 exitstatus=$STATE_OK #default
 declare -a volumeGroups;
