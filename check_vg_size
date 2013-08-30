@@ -24,7 +24,7 @@ SERVICEPERFDATA=""
 PROGNAME=$(basename $0)
 
 vgs_bin=`whereis -b vgs | awk '{ print $2 }'`
-_vgs="$vgs_bin --units=G"
+_vgs="$vgs_bin --units=g"
 
 exitstatus=$STATE_OK #default
 declare -a volumeGroups;
