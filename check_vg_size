@@ -122,21 +122,6 @@ getColumnNoByName () {
         echo $result
 }
 
-convertToGB () {
-#$1 = value 
-#$2 = posfix
-	local value=$1
-	local postfixFree=$2
-
-	if [[ $postfixFree == T ]]
-	then 
-		value=$(echo "$value * 1000" | bc | cut -d'.' -f1 )
-	else
-		value=$(echo $value | cut -d'.' -f1)
-	fi
-	echo $value
-}
-
 convertToPercent () {
 #$1 = xx%
 #$2 = 100%
@@ -156,10 +141,6 @@ getSizesOfVolume () {
 	cnSize=$(getColumnNoByName "VSize");
 	freespace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}' | sed -e 's/.$//');
 	fullspace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}' | sed -e 's/.$//');
-	local postfixFree=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}'| sed -e 's/^.*\(.\)$/\1/');
-	local postfixFull=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}'| sed -e 's/^.*\(.\)$/\1/');
-	freespace=$(convertToGB $freespace $postfixFree);
-	fullspace=$(convertToGB $fullspace $postfixFull);
 
 	if ( $inPercent ); then
 	#Convert to Percents
