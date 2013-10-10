@@ -139,8 +139,8 @@ getSizesOfVolume () {
 	#Check the actual sizes
 	cnFree=$(getColumnNoByName "VFree");
 	cnSize=$(getColumnNoByName "VSize");
-	freespace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}' | sed -e 's/.$//');
-	fullspace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}' | sed -e 's/.$//');
+	freespace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}' | sed -e 's/\,.*//');
+	fullspace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}' | sed -e 's/\,.*//');
 
 	if ( $inPercent ); then
 	#Convert to Percents
