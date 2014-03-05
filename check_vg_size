@@ -41,15 +41,16 @@ units=$unitsGB
 ########################################################################
 
 print_usage() {
-	echo "Usage: $PROGNAME  -w <min size warning level in gb> -c <min size critical level in gb> -v <volumegroupname> [-a]"
-	echo "In case of usage of -a all volumegroups defined by -v will be ommited and all groups which are found on system are checked"
-	echo ""
+	echo "Usage: $PROGNAME  -w <min size warning level in gb> -c <min size critical level in gb> -v <volumegroupname> [-a] [-p]"
+	echo "If '-a' and '-v' are specified: all volumegroups defined by -v will be ommited and the remaining groups which are found on system are checked"
+	echo "If '-p' is specified: the warning and critical levels are represented as the percent space left on device"
+    echo ""
 }
 
 print_help() {
 	print_usage
 	echo ""
-	echo "This plugin will check how many space in volume groups is free"
+	echo "This plugin will check how much space is free in volume groups"
 	echo "usage: "
 	exit $STATE_UNKNOWN
 }
@@ -65,10 +66,18 @@ checkArgValidity () {
 	        exit $exitstatus 
 	elif [ $warnlevel -le $critlevel ] # Do the warn/crit values make sense?
 	then
-		echo "CRITICAL value of $critlevel GB is less than WARNING level of $warnlevel GB"
-		print_usage
-		exitstatus=$STATE_UNKNOWN
-		exit $exitstatus
+        if [ $inPercent != 'true' ]
+        then
+            echo "CRITICAL value of $critlevel GB is less than WARNING level of $warnlevel GB"
+            print_usage
+            exitstatus=$STATE_UNKNOWN
+            exit $exitstatus
+        else
+            echo "CRITICAL value of $critlevel % is higher than WARNING level of $warnlevel %"
+            print_usage
+            exitstatus=$STATE_UNKNOWN
+            exit $exitstatus
+        fi
 	fi
 }
 
@@ -125,8 +134,9 @@ getColumnNoByName () {
 convertToPercent () {
 #$1 = xx%
 #$2 = 100%
-	local input=$1;
-	local max=$2;
+    # Make values numbers only
+	local input="$(echo $1 | sed 's/G//')"
+	local max="$(echo $2 | sed 's/G//')"
 
 	local onePercent=$( echo "scale=2; $max / 100" | bc );
 	local freePercent=$( echo "$input / $onePercent" | bc );
@@ -144,7 +154,7 @@ getSizesOfVolume () {
 
 	if ( $inPercent ); then
 	#Convert to Percents
-		freespace=$(convertToPercent $freespace $fullspace);
+		freespace="$(convertToPercent $freespace $fullspace)"
 	fi 
 }
 
@@ -186,7 +196,7 @@ checkArgValidity
 		local status=$STATE_OK
 		local currentVG=${volumeGroups[$i]}
 	
-		local groupExists=$(volumeGroupExists $currentVG  )
+		local groupExists="$(volumeGroupExists $currentVG )"
 		
 		if ( $groupExists ); then
 			getSizesOfVolume "$currentVG" 
