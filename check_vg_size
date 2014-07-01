@@ -112,7 +112,6 @@ getAllVGOnSystem () {
 	local found=false;
 	for (( i=0; i < novg; i++)); do
 		volumeGroups[$i]=$($_vgs | tail -n  $(($i+1)) | head -n 1 | awk '{print $1}')
-		volumeGroups[$i]=$($_vgs | tail -n  $novg | awk '{print $1}')
 		found=true;
 	done
 	if ( ! $found ); then
@@ -217,6 +216,8 @@ checkArgValidity
 			status=$STATE_OK
 		else
 			status=$STATE_UNKNOWN
+			setExitStatus $status "${groupExists}"
+			break
 		fi
 		
 		setExitStatus $status "$currentVG"
