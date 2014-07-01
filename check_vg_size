@@ -26,6 +26,8 @@ PROGNAME=$(basename $0)
 vgs_bin=`/usr/bin/whereis -B /sbin /bin /usr/bin /usr/sbin -b vgs | awk '{ print $2 }'`
 _vgs="$vgs_bin --units=g"
 
+bc_bin=`/usr/bin/whereis -B /sbin /bin /usr/bin /usr/sbin -b bc | awk '{ print $2 }'`
+
 exitstatus=$STATE_OK #default
 declare -a volumeGroups;
 novg=0; #number of volume groups
@@ -136,11 +138,16 @@ convertToPercent () {
 #$1 = xx%
 #$2 = 100%
     # Make values numbers only
-	local input="$(echo $1 | sed 's/G//')"
-	local max="$(echo $2 | sed 's/G//')"
-
-	local onePercent=$( echo "scale=2; $max / 100" | bc );
-	local freePercent=$( echo "$input / $onePercent" | bc );
+	local input="$(echo $1 | sed 's/g//i')"
+	local max="$(echo $2 | sed 's/g//i')"
+	local onePercent='';
+	local freePercent='';
+	if [ -x "$bc_bin" ] ; then
+		onePercent=$( echo "scale=2; $max / 100" | bc );
+		freePercent=$( echo "$input / $onePercent" | bc );
+	else
+		freePercent=$(perl -e "print int((($max-$input)*100/$max))")
+	fi
 	echo $freePercent;
 	return 0;
 }
