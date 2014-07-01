@@ -23,10 +23,10 @@ SERVICEPERFDATA=""
 
 PROGNAME=$(basename $0)
 
-vgs_bin=`/usr/bin/whereis -B /sbin /bin /usr/bin /usr/sbin -b vgs | awk '{ print $2 }'`
+vgs_bin=`/usr/bin/whereis -b -B /sbin /bin /usr/bin /usr/sbin -f vgs | awk '{ print $2 }'`
 _vgs="$vgs_bin --units=g"
 
-bc_bin=`/usr/bin/whereis -B /sbin /bin /usr/bin /usr/sbin -b bc | awk '{ print $2 }'`
+bc_bin=`/usr/bin/whereis -b -B /sbin /bin /usr/bin /usr/sbin -f bc | awk '{ print $2 }'`
 
 exitstatus=$STATE_OK #default
 declare -a volumeGroups;
@@ -154,10 +154,10 @@ convertToPercent () {
 getSizesOfVolume () {
 	volumeName="$1";
 	#Check the actual sizes
-	cnFree=$(getColumnNoByName "VFree");
-	cnSize=$(getColumnNoByName "VSize");
-	freespace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnFree '{print $n}' | sed -e 's/\,.*//');
-	fullspace=$($_vgs 2>/dev/null | grep $volumeName | awk -v n=$cnSize '{print $n}' | sed -e 's/\,.*//');
+	cnFree=`getColumnNoByName "VFree"`;
+	cnSize=`getColumnNoByName "VSize"`;
+	freespace=`$_vgs $volumeName 2>/dev/null | awk -v n=$cnFree '/[0-9]/{print $n}' | sed -e 's/[\.,\,].*//'`;
+	fullspace=`$_vgs $volumeName 2>/dev/null | awk -v n=$cnSize '/[0-9]/{print $n}' | sed -e 's/[\.,\,].*//'`;
 
 	if ( $inPercent ); then
 	#Convert to Percents
