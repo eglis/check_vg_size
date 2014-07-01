@@ -85,7 +85,7 @@ checkArgValidity () {
 
 #Does volume group actually exist?
 volumeGroupExists () {
-	local volGroup=$1
+	local volGroup="$1"
 	VGValid=$($_vgs 2>/dev/null | grep "$volGroup" | wc -l )
 	
 	if [[  -z "$volGroup" ||  $VGValid = 0 ]]
@@ -167,7 +167,7 @@ getSizesOfVolume () {
 
 setExitStatus () {
 	local status=$1
-	local volGroup=$2
+	local volGroup="$2"
 	local formerStatus=$exitstatus
 
 	if [ $status -gt $formerStatus ]
@@ -176,7 +176,7 @@ setExitStatus () {
 	fi
 
 	if [ $status = $STATE_UNKNOWN ] ; then
-		SERVICEOUTPUT=${volGroup}
+		SERVICEOUTPUT="${volGroup}"
 		exitstatus=$STATE_UNKNOWN
 		return
 	fi
@@ -206,10 +206,10 @@ setExitStatus () {
 checkVolumeGroups () {
 checkArgValidity
 	for (( i=0; i < novg; i++ )); do
-		local status=$STATE_OK
-		local currentVG=${volumeGroups[$i]}
+		local status="$STATE_OK"
+		local currentVG="${volumeGroups[$i]}"
 	
-		local groupExists="$(volumeGroupExists $currentVG )"
+		local groupExists="$(volumeGroupExists "$currentVG" )"
 		
 		if [ "$groupExists" = 'true' ]; then
 			getSizesOfVolume "$currentVG" 
