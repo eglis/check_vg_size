@@ -83,7 +83,7 @@ checkArgValidity () {
 
 #Does volume group actually exist?
 volumeGroupExists () {
-	local volGroup=$1
+	local volGroup=${@}
 	VGValid=$($_vgs 2>/dev/null | grep "$volGroup" | wc -l )
 	
 	if [[  -z "$volGroup" ||  $VGValid = 0 ]]
@@ -109,7 +109,8 @@ getAllVGOnSystem () {
 	novg=$(getNumberOfVGOnSystem)
 	local found=false;
 	for (( i=0; i < novg; i++)); do
-		volumeGroups[$i]=$($_vgs | tail -n $novg | awk '{print $1}')
+		volumeGroups[$i]=$($_vgs | tail -n  $(($i+1)) | head -n 1 | awk '{print $1}')
+		volumeGroups[$i]=$($_vgs | tail -n  $novg | awk '{print $1}')
 		found=true;
 	done
 	if ( ! $found ); then
@@ -168,6 +169,12 @@ setExitStatus () {
 		formerStatus=$status
 	fi
 
+	if [ $status = $STATE_UNKNOWN ] ; then
+		SERVICEOUTPUT=${volGroup}
+		exitstatus=$STATE_UNKNOWN
+		return
+	fi
+
 	if [ "$freespace" -le "$critlevel" ]
 	then
 		SERVICEOUTPUT=$SERVICEOUTPUT" VG $volGroup CRITICAL Available space is $freespace $units;"
@@ -198,14 +205,14 @@ checkArgValidity
 	
 		local groupExists="$(volumeGroupExists $currentVG )"
 		
-		if ( $groupExists ); then
+		if [ "$groupExists" = 'true' ]; then
 			getSizesOfVolume "$currentVG" 
 			status=$STATE_OK
 		else
 			status=$STATE_UNKNOWN
 		fi
 		
-		setExitStatus $status $currentVG
+		setExitStatus $status "$currentVG"
 	done
 }
 
