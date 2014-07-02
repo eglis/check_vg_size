@@ -85,7 +85,7 @@ checkArgValidity () {
 
 #Does volume group actually exist?
 volumeGroupExists () {
-	local volGroup="$1"
+	local volGroup="$@"
 	VGValid=$($_vgs 2>/dev/null | grep "$volGroup" | wc -l )
 	
 	if [[  -z "$volGroup" ||  $VGValid = 0 ]]
