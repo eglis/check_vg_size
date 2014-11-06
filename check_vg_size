@@ -194,7 +194,11 @@ setExitStatus () {
 		exitstatus=$STATE_OK
 	fi 
 
-	SERVICEPERFDATA="$SERVICEPERFDATA $volGroup=$freespace$units;$warnlevel;$critlevel;0;$fullspace"
+	SERVICEPERFDATA="$SERVICEPERFDATA $volGroup=$freespace$units;$warnlevel;$critlevel"
+	if [ $inPercent != 'true' ] ; then
+
+		SERVICEPERFDATA="${SERVICEPERFDATA};0;$fullspace"
+	fi
 
 	if [ $formerStatus -gt $exitstatus ]
 	then
