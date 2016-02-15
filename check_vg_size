@@ -275,17 +275,22 @@ if ( ! $allVG ) ; then
 	excludeVolumeGroups=''
 	if [ $novg -lt 1 ] ; then
 		echo "No volume group specified to check. See usage."
-		exit 3
+		exit $STATE_UNKNOWN
 	fi
 else
 	if [ "$novg" -gt 0 ] ; then
 		novg=0
-		unset "$volumeGroups"
+		volumeGroups=()
 	fi
 	getAllVGOnSystem
 fi
 
 checkVolumeGroups
+
+if [ -z "$SERVICEOUTPUT" -o -z "$SERVICEPERFDATA" ] ; then
+	echo "No data found, check parameters."
+	exit $STATE_UNKNOWN
+fi
 
 
 echo $SERVICEOUTPUT"|"$SERVICEPERFDATA
