@@ -31,6 +31,7 @@ bc_bin=`/usr/bin/whereis -b -B /sbin /bin /usr/bin /usr/sbin -f bc | awk '{ prin
 exitstatus=$STATE_OK #default
 declare -a volumeGroups;
 novg=0; #number of volume groups
+excludeVolumeGroups=''; #Volume groups to ignore if searching all
 allVG=false; #Will we use all volume groups we can find on system?
 inPercent=false; #Use percentage for comparison?
 
@@ -216,6 +217,10 @@ checkArgValidity
 		local groupExists="$(volumeGroupExists "$currentVG" )"
 		
 		if [ "$groupExists" = 'true' ]; then
+			if [ -n "$excludeVolumeGroups" ] && check=$(echo "$excludeVolumeGroups" | grep -q " $currentVG ") ; then
+				#currentVG skipped
+				continue
+			fi
 			getSizesOfVolume "$currentVG" 
 			status=$STATE_OK
 		else
@@ -248,14 +253,13 @@ while getopts ":w:c:v:h:ap" opt ;do
 			critlevel=$OPTARG;
 			;;
 		v)
-			if ( ! $allVG ); then
-				volumeGroups[$novg]=$OPTARG;
-				let novg++;
-			fi
+			#populate both values, decide which to use after while loop. Otherwise, order of parameters matters.
+			excludeVolumeGroups="$excludeVolumeGroups $OPTARG "
+			volumeGroups[$novg]=$OPTARG;
+			let novg++;
 			;;
 		a)
 			allVG=true;
-			getAllVGOnSystem;
 			;;
 		p)
 			inPercent=true;
@@ -266,6 +270,20 @@ while getopts ":w:c:v:h:ap" opt ;do
 			;;
 	esac
 done
+
+if ( ! $allVG ) ; then
+	excludeVolumeGroups=''
+	if [ $novg -lt 1 ] ; then
+		echo "No volume group specified to check. See usage."
+		exit 3
+	fi
+else
+	if [ "$novg" -gt 0 ] ; then
+		novg=0
+		unset "$volumeGroups"
+	fi
+	getAllVGOnSystem
+fi
 
 checkVolumeGroups
 
