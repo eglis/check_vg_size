@@ -3,9 +3,16 @@ check_vg_size
 
 Check volume groups usage and return nagios plugin style output
 
-Usage: <br/>
--w warnlevel <br/> 
--c criticallevel<br/> 
-[-v  volumeGroup] <br/>
-[-a] - when -a used, all volumegroups defined by -v will be ommited and all groups which are found on system will be checked <br/>
-[-p] - Use percentage for w and c instead of GB<br/>
+Usage:
+
+    check_vg_size -w warn_level -c critical_level [ -v volume_group ] [-p] ( -a | volume_group )
+
+    -w Integer threshold for freespace to trigger WARNING status, in GB.
+
+    -c Integer threshold for freespace to trigger CRITICAL status, in GB.
+
+    -v Ignore target volume group.
+
+    -a  check all volume groups except the ignored
+
+    -p  Use percentage for w and c instead of GB. Still integer, ie 5 for 5%, 10 for 10%.
