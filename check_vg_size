@@ -147,7 +147,7 @@ convertToPercent () {
 		onePercent=$( echo "scale=2; $max / 100" | bc );
 		freePercent=$( echo "$input / $onePercent" | bc );
 	else
-		freePercent=$(perl -e "print int((($max-$input)*100/$max))")
+		freePercent=$(perl -e "print int($input*100/$max)")
 	fi
 	echo $freePercent;
 	return 0;
